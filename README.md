@@ -18,9 +18,13 @@ tellus duis convallis. Tempus leo eu aenean sed diam urna tempor. Pulvinar vivam
 
 The constructed cards take the following form (using the same example as above):
 
-<img src="assets/obsidian-flashcard-front.png", width="500", margin="auto">
+<p align="center">
+<img src="assets/obsidian-flashcard-front.png", width="500">
+</p>
 
-<img src="assets/obsidian-flashcard-back.png", width="500", margin="auto">
+<p align="center">
+<img src="assets/obsidian-flashcard-back.png", width="500">
+</p>
 
 
 # Installation and setup

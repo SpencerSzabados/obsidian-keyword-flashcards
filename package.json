@@ -1,0 +1,25 @@
+{
+    "name": "obsidian-keyword-flashcards",
+    "version": "0.1.0",
+    "description": "Creates flashcards from blocks beginning with keywords in your notes.",
+    "main": "main.js",
+    "scripts": {
+      "dev": "rollup --config rollup.config.js -w",
+      "build": "rollup --config rollup.config.js"
+    },
+    "keywords": [
+      "obsidian",
+      "plugin",
+      "flashcards"
+    ],
+    "author": "Spencer Szabados",
+    "license": "MIT",
+    "devDependencies": {
+      "@rollup/plugin-commonjs": "^22.0.0",
+      "@rollup/plugin-node-resolve": "^13.3.0",
+      "obsidian": "^0.15.0",
+      "rollup": "^2.70.2",
+      "rollup-plugin-typescript2": "^0.31.2",
+      "typescript": "^4.6.4"
+    }
+  }

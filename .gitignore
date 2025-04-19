@@ -1,0 +1,6 @@
+# Cache files
+*.Cache
+*.cache
+
+# Node js install
+/node_modules/*

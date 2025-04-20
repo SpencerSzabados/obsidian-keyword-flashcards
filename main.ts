@@ -1,4 +1,4 @@
-import { App, Modal, Notice, Plugin, PluginSettingTab, Setting, TFile } from 'obsidian';
+import { App, Modal, Notice, Plugin, PluginSettingTab, Setting, TFile, MarkdownRenderer, Component } from 'obsidian';
 
 interface FlashCard {
     type: string;           // "Definition" or "Theorem"
@@ -260,14 +260,17 @@ class FlashcardModal extends Modal {
             // Show back of card
             const contentEl = cardEl.createEl("div", { cls: "flashcard-content" });
             
-            // Process content as markdown
-            const processedContent = card.content
-                .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-                .replace(/_(.*?)_/g, '<em>$1</em>')
-                .replace(/`(.*?)`/g, '<code>$1</code>')
-                .split('\n').join('<br>');
+            // Create a new component for markdown rendering
+            const component = new Component();
+            component.load();
             
-            contentEl.innerHTML = processedContent;
+            // Use the newer render method from the example
+            MarkdownRenderer.renderMarkdown(
+                card.content,
+                contentEl,
+                card.source,
+                component
+            );
             
             const sourceEl = cardEl.createEl("div", { 
                 cls: "flashcard-source", 

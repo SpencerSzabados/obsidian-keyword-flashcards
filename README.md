@@ -43,7 +43,8 @@ within your `.obsidian` vault folder
 .obsidian/plugins/obsidian-keyword-flashcards/
 ├── main.js       (compiled JavaScript from build)
 ├── manifest.json
-└── styles.css
+├── styles.css
+└── config.json   (flashcard keyword specification file)
 ```
 
 This should be all that you need to do.

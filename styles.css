@@ -1,0 +1,72 @@
+.flashcard-modal {
+    padding: 20px;
+}
+
+.flashcard-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+}
+
+.flashcard-header h2 {
+    margin: 0;
+}
+
+.flashcard-card {
+    background-color: var(--background-primary);
+    border: 1px solid var(--background-modifier-border);
+    border-radius: 8px;
+    padding: 40px;
+    margin-bottom: 20px;
+    min-height: 200px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.flashcard-type {
+    font-size: 0.9em;
+    color: var(--text-muted);
+    margin-bottom: 10px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+.flashcard-name {
+    font-size: 1.5em;
+    font-weight: bold;
+    margin-bottom: 15px;
+}
+
+.flashcard-content {
+    text-align: left;
+    width: 100%;
+    line-height: 1.6;
+}
+
+.flashcard-folder, .flashcard-source {
+    font-size: 0.8em;
+    color: var(--text-muted);
+    margin-top: 15px;
+}
+
+.flashcard-instruction {
+    color: var(--text-faint);
+    font-size: 0.8em;
+    margin-top: 20px;
+    font-style: italic;
+}
+
+.flashcard-controls {
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+}
+
+.flashcard-controls button {
+    padding: 8px 16px;
+}

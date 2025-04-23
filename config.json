@@ -1,0 +1,26 @@
+[
+    {
+      "id": "definition",
+      "name": "Definition",
+      "enabled": true,
+      "pattern": "\\*\\*Definition:\\s*([^*]+)\\*\\*\\s*([\\s\\S]*?)(?=\\n\\s*\\n|\\n\\s*\\*\\*|\\n\\s*#{1,6}\\s|$)"
+    },
+    {
+      "id": "theorem",
+      "name": "Theorem",
+      "enabled": true,
+      "pattern": "\\*\\*Theorem:\\s*([^*]+)\\*\\*\\s*([\\s\\S]*?)(?=\\n\\s*\\n|\\n\\s*\\*\\*|\\n\\s*#{1,6}\\s|$)"
+    },
+    {
+      "id": "example",
+      "name": "Example",
+      "enabled": true,
+      "pattern": "\\*\\*Example:\\s*([^*]+)\\*\\*\\s*([\\s\\S]*?)(?=\\n\\s*\\n|\\n\\s*\\*\\*|\\n\\s*#{1,6}\\s|$)"
+    },
+    {
+      "id": "lemma",
+      "name": "Lemma",
+      "enabled": true,
+      "pattern": "\\*\\*Lemma:\\s*([^*]+)\\*\\*\\s*([\\s\\S]*?)(?=\\n\\s*\\n|\\n\\s*\\*\\*|\\n\\s*#{1,6}\\s|$)"
+    }
+  ]

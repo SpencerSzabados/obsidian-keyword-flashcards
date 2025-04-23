@@ -1,34 +1,49 @@
 import { App, Modal, Notice, Plugin, PluginSettingTab, Setting, TFile, MarkdownRenderer, Component } from 'obsidian';
+import * as fs from 'fs';
+import * as path from 'path';
+
+
+// Define the card type configuration structure
+interface CardTypeConfig {
+    id: string;          // Unique identifier
+    name: string;        // Display name
+    pattern: string;     // Regex pattern for matching
+    enabled: boolean;    // Whether this type is enabled
+}
+
 
 interface FlashCard {
-    type: string;           // "Definition" or "Theorem"
-    name: string;           // The name component
-    content: string;        // The body content
-    source: string;         // Source file path
-    folder: string;         // Parent folder name
+    type: string;        // The card type name
+    name: string;        // The name component
+    content: string;     // The body content
+    source: string;      // Source file path
+    folder: string;      // Parent folder name
 }
+
 
 interface FlashcardsPluginSettings {
-    includeDefinitions: boolean;
-    includeTheorems: boolean;
     shuffleCards: boolean;
+    configPath: string;  // Path to the JSON configuration file
 }
 
+
 const DEFAULT_SETTINGS: FlashcardsPluginSettings = {
-    includeDefinitions: true,
-    includeTheorems: true,
-    shuffleCards: true
+    shuffleCards: true,
+    configPath: 'config.json'
 }
+
 
 export default class FlashcardsPlugin extends Plugin {
     settings: FlashcardsPluginSettings;
+    cardTypes: CardTypeConfig[] = [];
 
     async onload() {
         console.log('Loading flashcards plugin');
         
         await this.loadSettings();
+        await this.loadCardTypesConfig();
 
-        // Add ribbon icon - fixed the arguments to match expected signature
+        // Add ribbon icon
         this.addRibbonIcon('dice', 'Flashcards', (evt: MouseEvent) => {
             this.startFlashcardSession();
         });
@@ -39,6 +54,16 @@ export default class FlashcardsPlugin extends Plugin {
             name: 'Start Flashcard Session',
             callback: () => {
                 this.startFlashcardSession();
+            }
+        });
+
+        // Add command to reload configuration
+        this.addCommand({
+            id: 'reload-flashcard-config',
+            name: 'Reload Flashcard Configuration',
+            callback: async () => {
+                await this.loadCardTypesConfig();
+                new Notice('Flashcard configuration reloaded');
             }
         });
 
@@ -58,11 +83,54 @@ export default class FlashcardsPlugin extends Plugin {
         await this.saveData(this.settings);
     }
 
+    async loadCardTypesConfig() {
+        try {
+            // Get the path to the Obsidian vault
+            const vaultPath = (this.app.vault.adapter as any).basePath; 
+            
+            // Combine with the config file path from settings
+            const configFilePath = path.join(vaultPath, this.settings.configPath);
+            
+            // Check if the file exists
+            if (fs.existsSync(configFilePath)) {
+                // Read and parse the JSON file
+                const configData = fs.readFileSync(configFilePath, 'utf8');
+                this.cardTypes = JSON.parse(configData);
+                console.log(`Loaded ${this.cardTypes.length} card types from configuration`);
+
+            } else {
+                // Create default configuration if file doesn't exist
+                this.cardTypes = [
+                    { 
+                        id: "definition", 
+                        name: "Definition", 
+                        enabled: true,
+                        pattern: "\\*\\*Definition:\\s*([^*]+)\\*\\*\\s*([\\s\\S]*?)(?=\\n\\s*\\n|\\n\\s*\\*\\*|\\n\\s*#{1,6}\\s|$)"
+                    },
+                    { 
+                        id: "theorem", 
+                        name: "Theorem", 
+                        enabled: true,
+                        pattern: "\\*\\*Theorem:\\s*([^*]+)\\*\\*\\s*([\\s\\S]*?)(?=\\n\\s*\\n|\\n\\s*\\*\\*|\\n\\s*#{1,6}\\s|$)"
+                    }
+                ];
+                
+                // Create the configuration file with default settings
+                fs.writeFileSync(configFilePath, JSON.stringify(this.cardTypes, null, 2));
+                console.log(`Created default configuration file at ${configFilePath}`);
+            }
+
+        } catch (error) {
+            console.error('Error loading card types configuration:', error);
+            new Notice('Error loading flashcard configuration file');
+        }
+    }
+
     async startFlashcardSession() {
         const flashcards = await this.parseFlashcards();
         
         if (flashcards.length === 0) {
-            new Notice('No flashcards found. Make sure your notes contain blocks starting with "**Definition: (Name)**" or "**Theorem: (Name)**"');
+            new Notice('No flashcards found. Check your configuration and make sure your notes contain the defined patterns.');
             return;
         }
 
@@ -76,50 +144,38 @@ export default class FlashcardsPlugin extends Plugin {
     async parseFlashcards(): Promise<FlashCard[]> {
         const flashcards: FlashCard[] = [];
         const files = this.app.vault.getMarkdownFiles();
-
+        
         for (const file of files) {
             const content = await this.app.vault.read(file);
             const folder = this.getParentFolderName(file);
             
-            // Find Definition blocks
-            if (this.settings.includeDefinitions) {
-                const definitionRegex = /\*\*Definition:\s*([^*]+)\*\*\s*([\s\S]*?)(?=\n\s*\n|\n\s*\*\*|\n\s*#{1,6}\s|$)/gi;
-                let match;
-                
-                while ((match = definitionRegex.exec(content)) !== null) {
-                    const name = match[1].trim();
-                    const cardContent = match[2].trim();
-                    
-                    flashcards.push({
-                        type: "Definition",
-                        name,
-                        content: cardContent,
-                        source: file.path,
-                        folder
-                    });
-                }
-            }
-            
-            // Find Theorem blocks
-            if (this.settings.includeTheorems) {
-                const theoremRegex = /\*\*Theorem:\s*([^*]+)\*\*\s*([\s\S]*?)(?=\n\s*\n|\n\s*\*\*|\n\s*#{1,6}\s|$)/gi;
-                let match;
-                
-                while ((match = theoremRegex.exec(content)) !== null) {
-                    const name = match[1].trim();
-                    const cardContent = match[2].trim();
-                    
-                    flashcards.push({
-                        type: "Theorem",
-                        name,
-                        content: cardContent,
-                        source: file.path,
-                        folder
-                    });
+            // Process each card type from the loaded configuration
+            for (const cardType of this.cardTypes) {
+                if (cardType.enabled) {
+                    try {
+                        const regex = new RegExp(cardType.pattern, 'gi');
+                        let match;
+                        
+                        while ((match = regex.exec(content)) !== null) {
+                            const name = match[1].trim();
+                            const cardContent = match[2].trim();
+                            
+                            flashcards.push({
+                                type: cardType.name,
+                                name,
+                                content: cardContent,
+                                source: file.path,
+                                folder
+                            });
+                        }
+                    } catch (e) {
+                        console.error(`Error with regex pattern for card type ${cardType.name}:`, e);
+                        new Notice(`Invalid regex pattern for card type: ${cardType.name}`);
+                    }
                 }
             }
         }
-
+        
         return flashcards;
     }
 
@@ -148,6 +204,7 @@ export default class FlashcardsPlugin extends Plugin {
         }
     }
 }
+
 
 class FlashcardModal extends Modal {
     flashcards: FlashCard[];
@@ -315,6 +372,7 @@ class FlashcardModal extends Modal {
     }
 }
 
+
 class FlashcardsSettingTab extends PluginSettingTab {
     plugin: FlashcardsPlugin;
 
@@ -331,26 +389,6 @@ class FlashcardsSettingTab extends PluginSettingTab {
         containerEl.createEl('h2', {text: 'Flashcards Plugin Settings'});
 
         new Setting(containerEl)
-            .setName('Include Definitions')
-            .setDesc('Extract flashcards from blocks starting with "**Definition: (Name)**"')
-            .addToggle(toggle => toggle
-                .setValue(this.plugin.settings.includeDefinitions)
-                .onChange(async (value) => {
-                    this.plugin.settings.includeDefinitions = value;
-                    await this.plugin.saveSettings();
-                }));
-
-        new Setting(containerEl)
-            .setName('Include Theorems')
-            .setDesc('Extract flashcards from blocks starting with "**Theorem: (Name)**"')
-            .addToggle(toggle => toggle
-                .setValue(this.plugin.settings.includeTheorems)
-                .onChange(async (value) => {
-                    this.plugin.settings.includeTheorems = value;
-                    await this.plugin.saveSettings();
-                }));
-
-        new Setting(containerEl)
             .setName('Shuffle Cards')
             .setDesc('Randomize the order of flashcards in each session')
             .addToggle(toggle => toggle
@@ -359,5 +397,72 @@ class FlashcardsSettingTab extends PluginSettingTab {
                     this.plugin.settings.shuffleCards = value;
                     await this.plugin.saveSettings();
                 }));
+
+        new Setting(containerEl)
+            .setName('Configuration File Path')
+            .setDesc('Path to the JSON configuration file (relative to vault root)')
+            .addText(text => text
+                .setValue(this.plugin.settings.configPath)
+                .onChange(async (value) => {
+                    this.plugin.settings.configPath = value;
+                    await this.plugin.saveSettings();
+                }));
+                
+        new Setting(containerEl)
+            .setName('Reload Configuration')
+            .setDesc('Reload the card types from the configuration file')
+            .addButton(button => button
+                .setButtonText('Reload')
+                .onClick(async () => {
+                    await this.plugin.loadCardTypesConfig();
+                    new Notice('Configuration reloaded');
+                }));
+                
+        containerEl.createEl('h3', {text: 'Current Card Types'});
+        
+        const cardTypesInfo = containerEl.createEl('div', {
+            cls: 'flashcard-types-info'
+        });
+        
+        if (this.plugin.cardTypes.length === 0) {
+            cardTypesInfo.createEl('p', {
+                text: 'No card types loaded. Check your configuration file.'
+            });
+        } else {
+            const table = cardTypesInfo.createEl('table');
+            const headerRow = table.createEl('tr');
+            headerRow.createEl('th', {text: 'ID'});
+            headerRow.createEl('th', {text: 'Name'});
+            headerRow.createEl('th', {text: 'Enabled'});
+            
+            this.plugin.cardTypes.forEach(cardType => {
+                const row = table.createEl('tr');
+                row.createEl('td', {text: cardType.id});
+                row.createEl('td', {text: cardType.name});
+                row.createEl('td', {text: cardType.enabled ? 'Yes' : 'No'});
+            });
+        }
+        
+        containerEl.createEl('h3', {text: 'Configuration Format'});
+        
+        containerEl.createEl('p', {
+            text: 'The configuration file should be a JSON array of card type objects with the following structure:'
+        });
+        
+        const configExample = containerEl.createEl('pre');
+        configExample.setText(JSON.stringify([
+            {
+                "id": "definition",
+                "name": "Definition",
+                "enabled": true,
+                "pattern": "\\*\\*Definition:\\s*([^*]+)\\*\\*\\s*([\\s\\S]*?)(?=\\n\\s*\\n|\\n\\s*\\*\\*|\\n\\s*#{1,6}\\s|$)"
+            },
+            {
+                "id": "example",
+                "name": "Example",
+                "enabled": true,
+                "pattern": "\\*\\*Example:\\s*([^*]+)\\*\\*\\s*([\\s\\S]*?)(?=\\n\\s*\\n|\\n\\s*\\*\\*|\\n\\s*#{1,6}\\s|$)"
+            }
+        ], null, 2));
     }
 }
